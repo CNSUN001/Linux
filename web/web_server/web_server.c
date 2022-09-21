@@ -2,8 +2,9 @@
     > File Name: web_server.c
     > Author: ma6174
     > Mail: ma6174@163.com 
-    > Created Time: 2022年09月21日 星期三 00时06分51秒
+    > Created Time: 2022年09月21日 星期三 09时13分34秒
  ************************************************************************/
+
 //web服务端程序--使用epoll模型
 #include <unistd.h>
 #include <sys/epoll.h>
@@ -90,4 +91,78 @@ int main()
 			}			
 		}		
 	}
+}
+
+int send_header(int cfd,char* code,char* msg,char* fileType,int len){
+	char buf[1024] = {0};
+	sprintf(buf,"HTTP/1.1 %s %s \r\n",code ,msg);//状态行
+	sprintf(buf + strlen(buf),"Content-Type:%s\r\n",fileType);
+	if(len > 0){
+		sprintf(buf + strlen(buf),"Content-Length:%d\r\n",len);
+	}
+	strcat(buf,"\r\n");
+	Write(cfd,buf,strlen(buf));
+	return 0;
+}
+
+
+int send_file(int cfd , char *fileName){
+	//打开文件
+	int fd = open(fileName , O_RDONLY);
+	if(fd < 0){
+		perror("open error");
+		return -1;
+	}
+
+	//循环读文件，然后发送
+	char buf[1024];
+	while(1){
+		memset(buf,0x00,sizeof(buf));
+		n = read(fd, buf,sizeof(buf));
+		if(n<=0)
+			break;
+		else
+			Write(cfd,buf,n);
+	}
+}
+
+
+
+int http_request(int cfd){
+	int n;
+	char buf[1024];
+	//读取请求行数据，分析出资源文件名
+	memset(buf,0x00,sizeof(buf));
+	Readline(cfd,buf,sizeof(buf));
+	printf("buf==[%s]\n",buf);
+	//GET /hanzi.c HTTP/1.1
+	char reqType[16] = {0};
+	char fileName[255] = {0};
+	char protocal[16] = {0};//协议版本
+	sscanf(buf,"%[^ ] %[^ ] %[^\r\n]",reqType,fileName,protocal);//[^]正则
+	printf("[%s]\n",reqType);
+	printf("[%s]\n",fileName);
+	printf("[%s]\n",protocal);
+
+	
+	//循环读取完剩余的数据
+	while((n = Readline(cfd,buf,sizeof(buf))) > 0);
+
+	//判断文件是否存在
+	struct stat st;
+	
+	//若文件不存在
+	if(stat(fileName,&st) < 0){
+		printf("file not exist\n");
+
+		//发送头部信息
+		send_header(cfd,"404","NOT FOUND",get_mime_type(".html"),0);
+
+		//发送文件内容
+		send_file(cfd,"error.html");
+		//组织应答信息:http响应 _+ 错误页内容
+	}
+	
+	//若文件存在----
+		//判断文件类型 
 }
