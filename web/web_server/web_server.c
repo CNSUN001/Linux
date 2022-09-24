@@ -149,8 +149,15 @@ int http_request(int cfd,int epfd){
 	printf("[%s]\n",reqType);
 	printf("[%s]\n",fileName);
 	printf("[%s]\n",protocal);
+	
+	char *pFile = fileName;
+	if(strlen(fileName)<=1){
+		strcpy(pFile,"./");
+	}
+	else{
+		pFile = fileName + 1;//文件名要去掉/
+	}
 
-	char *pFile = fileName + 1;//文件名要去掉/
 	printf("[%s]\n",pFile);
 
 	//循环读取完剩余的数据
@@ -209,7 +216,14 @@ int http_request(int cfd,int epfd){
 			while (num--) {
 				printf("%s\n", namelist[num]->d_name);
 				memset(buffer,0x00,sizeof(buffer));
-				sprintf(buffer,"<li><a href=%s> %s </a></li>",namelist[num]->d_name,namelist[num]->d_name);
+
+				if(namelist[num]->d_type == DT_DIR){//要区别目录文件和普通文件
+					sprintf(buffer,"<li><a href=%s/> %s </a></li>",namelist[num]->d_name,namelist[num]->d_name);
+				}
+				else{
+
+					sprintf(buffer,"<li><a href=%s> %s </a></li>",namelist[num]->d_name,namelist[num]->d_name);
+				}
 				free(namelist[num]);
 				Write(cfd,buffer,strlen(buffer));
 			}
