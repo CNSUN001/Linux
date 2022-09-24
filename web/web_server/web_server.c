@@ -135,6 +135,7 @@ int http_request(int cfd,int epfd){
 	memset(buf,0x00,sizeof(buf));
 	n = Readline(cfd,buf,sizeof(buf));
 	if(n <= 0){
+		printf("read error or client closed , n==[%d]\n",n);
 		//读异常或者关闭连接
 		close(cfd);
 		epoll_ctl(epfd,EPOLL_CTL_DEL,cfd,NULL);
@@ -158,9 +159,12 @@ int http_request(int cfd,int epfd){
 		pFile = fileName + 1;//文件名要去掉/
 	}
 
+	//转换汉字编码
+	strdecode(pFile,pFile);
+
 	printf("[%s]\n",pFile);
 
-	//循环读取完剩余的数据
+	//循环读取完剩余的数据 避免粘包
 	while((n = Readline(cfd,buf,sizeof(buf))) > 0);
 
 	//判断文件是否存在
@@ -210,7 +214,9 @@ int http_request(int cfd,int epfd){
 			num = scandir(pFile, &namelist, NULL, alphasort);
 			if (num == -1 ) {
 				perror("scandir");
-				exit(EXIT_FAILURE);
+				close(cfd);
+				epoll_ctl(epfd,EPOLL_CTL_DEL, cfd ,NULL);
+				return -1;
 			}
 
 			while (num--) {
@@ -221,7 +227,6 @@ int http_request(int cfd,int epfd){
 					sprintf(buffer,"<li><a href=%s/> %s </a></li>",namelist[num]->d_name,namelist[num]->d_name);
 				}
 				else{
-
 					sprintf(buffer,"<li><a href=%s> %s </a></li>",namelist[num]->d_name,namelist[num]->d_name);
 				}
 				free(namelist[num]);
