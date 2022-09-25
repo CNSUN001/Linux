@@ -19,8 +19,22 @@
 
 int http_request(int cfd ,int epfd);
 
+//检查信号 
+//void sighandler(int signo){
+//	printf("signo==[%d]\n",signo);
+//}
+
 int main()
 {
+	//若web服务器给浏览器发送数据的时候，浏览器已经关闭连接
+	//则web服务器就会收到SIGPIPE信号
+	//signal(SIGPIPE,SIG_IGN); //linux版本不同可能不兼容
+	struct sigaction act;
+	act.sa_handler = SIG_IGN;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	sigaction(SIGPIPE ,&act ,NULL);
+
 	//改变当前进程的工作目录
 	char path[255] = {0};
 	sprintf(path, "%s/%s", getenv("HOME"), "git-documents/Linux/web/web_server");
@@ -192,6 +206,7 @@ int http_request(int cfd,int epfd){
 			//发送头部信息
 			send_header(cfd,"200","OK",get_mime_type(pFile),st.st_size);
 
+
 			//发送文件内容
 			send_file(cfd,pFile);
 		}
@@ -236,6 +251,7 @@ int http_request(int cfd,int epfd){
 
 
 			//发送html文件尾部
+//			sleep(10);
 			send_file(cfd,"html/dir_tail.html");
 		}
 	}
